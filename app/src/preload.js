@@ -48,6 +48,12 @@ contextBridge.exposeInMainWorld('virtualMixDeck', {
   obsConnect: (url, password) => ipcRenderer.invoke('obs:connect', { url, password }),
   obsListWindowCandidates: (processName) => ipcRenderer.invoke('obs:listWindowCandidates', processName),
 
+  licenseGetStatus: () => ipcRenderer.invoke('license:getStatus'),
+  licenseStartPurchase: (email) => ipcRenderer.invoke('license:startPurchase', email),
+  licenseVerify: (key) => ipcRenderer.invoke('license:verify', key),
+
+  sendFeedback: (subject, body) => ipcRenderer.invoke('feedback:send', { subject, body }),
+
   getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
 
   appMenuReload: () => ipcRenderer.invoke('appMenu:reload'),

@@ -29,6 +29,13 @@
         <div class="menu-bar-dropdown-item" data-action="help-preset">プリセットの使い方</div>
       </div>
     </div>
+    <div class="menu-bar-item" data-menu="account">
+      アカウント
+      <div class="menu-bar-dropdown">
+        <div class="menu-bar-dropdown-item" data-action="open-license">購入・ライセンス</div>
+        <div class="menu-bar-dropdown-item" data-action="open-feedback">フィードバック</div>
+      </div>
+    </div>
     <div class="menu-bar-item" data-menu="version">
       バージョン
       <div class="menu-bar-dropdown">
@@ -182,6 +189,37 @@
     <div id="preset-manage-list" class="scroll-y"></div>
     <div class="dialog-buttons">
       <button type="button" id="preset-manage-close">閉じる</button>
+    </div>
+  </dialog>
+
+  <dialog id="license-dialog">
+    <h2>購入・ライセンス</h2>
+    <p id="license-status" class="dialog-hint"></p>
+
+    <div id="license-purchase-section">
+      <p>買い切り¥1,480で、ショートカット4×5枠・ミキサー無制限・プリセット管理・複数ページが解放されます。</p>
+      <label>メールアドレス（購入確認・ライセンスキー送付先）<input type="email" id="license-email" placeholder="you@example.com" /></label>
+      <button type="button" id="license-purchase-btn" class="btn-brand">購入する（ブラウザで決済ページを開く）</button>
+    </div>
+
+    <label>ライセンスキー（購入後にメールで届きます）
+      <input type="text" id="license-key-input" placeholder="VMD-XXXX-XXXX-XXXX" />
+    </label>
+    <button type="button" id="license-verify-btn" class="btn-brand-outline">キーを入力して解除する</button>
+
+    <div class="dialog-buttons">
+      <button type="button" id="license-close">閉じる</button>
+    </div>
+  </dialog>
+
+  <dialog id="feedback-dialog">
+    <h2>フィードバック</h2>
+    <p class="dialog-hint">ご要望・不具合報告などをお送りください。</p>
+    <label>件名<input type="text" id="feedback-subject" maxlength="200" /></label>
+    <label>本文<textarea id="feedback-body" rows="6" maxlength="4000"></textarea></label>
+    <div class="dialog-buttons">
+      <button type="button" id="feedback-cancel">キャンセル</button>
+      <button type="button" id="feedback-send">送信</button>
     </div>
   </dialog>
 

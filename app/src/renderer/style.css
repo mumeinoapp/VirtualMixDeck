@@ -637,7 +637,7 @@ dialog label {
   margin: 0 2px;
 }
 
-dialog input, dialog select {
+dialog input, dialog select, dialog textarea {
   display: block;
   width: 100%;
   margin-top: 4px;
@@ -647,9 +647,12 @@ dialog input, dialog select {
   color: var(--text-main);
   border-radius: 6px;
   font-size: 13px;
+  font-family: inherit;
+  box-sizing: border-box;
+  resize: vertical;
 }
 
-dialog input:focus, dialog select:focus {
+dialog input:focus, dialog select:focus, dialog textarea:focus {
   outline: none;
   border-color: var(--brand-blue);
 }
@@ -705,6 +708,53 @@ dialog input:focus, dialog select:focus {
 
 .icon-picker-custom.selected {
   border-style: solid;
+}
+
+/* ---- 購入・ライセンスダイアログのCTAボタン（オリジナルデザイン） ---- */
+.btn-brand {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--brand-gradient);
+  color: #0b0b0d;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-brand:hover {
+  background: var(--brand-gradient-hover);
+  box-shadow: 0 0 14px rgba(79, 140, 255, 0.35);
+}
+
+.btn-brand:active {
+  filter: brightness(0.92);
+}
+
+.btn-brand-outline {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background:
+    linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+    var(--brand-gradient) border-box;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-brand-outline:hover {
+  background: var(--brand-gradient);
+  color: #0b0b0d;
 }
 
 .dialog-buttons {

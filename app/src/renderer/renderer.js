@@ -400,7 +400,11 @@ document.getElementById('page-next').addEventListener('click', async () => {
 });
 
 document.getElementById('page-add').addEventListener('click', async () => {
-  await window.virtualMixDeck.addPage();
+  const result = await window.virtualMixDeck.addPage();
+  if (!result.ok) {
+    await showAppAlert(result.error, 'エラー');
+    return;
+  }
   await reload();
 });
 
@@ -988,7 +992,7 @@ document.getElementById('m-save').addEventListener('click', async () => {
     return;
   }
   const channelName = mChannelEl.selectedOptions[0]?.textContent || '';
-  await window.virtualMixDeck.mixerAdd({
+  const result = await window.virtualMixDeck.mixerAdd({
     sourceType: 'wavelink',
     channelId: mChannelEl.value,
     channelName,
@@ -998,6 +1002,10 @@ document.getElementById('m-save').addEventListener('click', async () => {
     iconFile: mIconHiddenEl.value || DEFAULT_BUTTON_ICON,
     customIcon: mCustomIconHiddenEl.value || null,
   });
+  if (result && result.error) {
+    await showAppAlert(result.error, 'エラー');
+    return;
+  }
   await reloadMixerEntries();
   mixerAddDialogEl.close();
 });
@@ -1094,10 +1102,90 @@ document.querySelectorAll('.menu-bar-dropdown-item').forEach((item) => {
       if (action === 'reload') window.virtualMixDeck.appMenuReload();
       else if (action === 'toggle-devtools') window.virtualMixDeck.appMenuToggleDevTools();
       else if (action === 'quit') window.virtualMixDeck.appMenuQuit();
+      else if (action === 'open-license') openLicenseDialog();
+      else if (action === 'open-feedback') openFeedbackDialog();
       else if (action in HELP_TEXTS) showAppAlert(HELP_TEXTS[action], item.textContent);
     }
     document.querySelectorAll('.menu-bar-item.open').forEach((i) => i.classList.remove('open'));
   });
+});
+
+// ---- 購入・ライセンス ----
+
+const licenseDialogEl = document.getElementById('license-dialog');
+const licenseStatusEl = document.getElementById('license-status');
+const licensePurchaseSectionEl = document.getElementById('license-purchase-section');
+const licenseEmailEl = document.getElementById('license-email');
+const licenseKeyInputEl = document.getElementById('license-key-input');
+
+async function openLicenseDialog() {
+  const status = await window.virtualMixDeck.licenseGetStatus();
+  if (status.unlocked) {
+    licenseStatusEl.textContent = '✅ 有料版が有効です。ショートカット4×5枠・ミキサー無制限・プリセット管理・複数ページをご利用いただけます。';
+    licensePurchaseSectionEl.hidden = true;
+  } else {
+    licenseStatusEl.textContent = '無料版でご利用中です。';
+    licensePurchaseSectionEl.hidden = false;
+  }
+  licenseKeyInputEl.value = '';
+  licenseDialogEl.showModal();
+}
+
+document.getElementById('license-close').addEventListener('click', () => licenseDialogEl.close());
+
+document.getElementById('license-purchase-btn').addEventListener('click', async () => {
+  const email = licenseEmailEl.value.trim();
+  if (!email) {
+    await showAppAlert('メールアドレスを入力してください');
+    return;
+  }
+  const result = await window.virtualMixDeck.licenseStartPurchase(email);
+  if (!result.ok) {
+    await showAppAlert(result.error, 'エラー');
+    return;
+  }
+  await showAppAlert('ブラウザで決済ページを開きました。お支払い完了後、登録したメールアドレスにライセンスキーが届きます。');
+});
+
+document.getElementById('license-verify-btn').addEventListener('click', async () => {
+  const result = await window.virtualMixDeck.licenseVerify(licenseKeyInputEl.value);
+  if (!result.ok) {
+    await showAppAlert(result.error, 'エラー');
+    return;
+  }
+  await showAppAlert('有料機能を解除しました！');
+  licenseDialogEl.close();
+  await reload();
+});
+
+// ---- フィードバック ----
+
+const feedbackDialogEl = document.getElementById('feedback-dialog');
+const feedbackSubjectEl = document.getElementById('feedback-subject');
+const feedbackBodyEl = document.getElementById('feedback-body');
+
+function openFeedbackDialog() {
+  feedbackDialogEl.showModal();
+}
+
+document.getElementById('feedback-cancel').addEventListener('click', () => feedbackDialogEl.close());
+
+document.getElementById('feedback-send').addEventListener('click', async () => {
+  const subject = feedbackSubjectEl.value.trim();
+  const body = feedbackBodyEl.value.trim();
+  if (!subject && !body) {
+    await showAppAlert('件名または本文を入力してください');
+    return;
+  }
+  const result = await window.virtualMixDeck.sendFeedback(subject, body);
+  if (!result.ok) {
+    await showAppAlert(`送信に失敗しました: ${result.error}`, 'エラー');
+    return;
+  }
+  feedbackSubjectEl.value = '';
+  feedbackBodyEl.value = '';
+  feedbackDialogEl.close();
+  await showAppAlert('フィードバックを送信しました。ありがとうございます！');
 });
 
 // ---- 初期化 ----

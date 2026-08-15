@@ -28,6 +28,15 @@ const waveLinkBridge = require('./waveLinkBridge');
 
 const GRID_ROWS = 4;
 const GRID_COLS = 5;
+// 無料版の制限（決済方針.md「公式サイトからの購入導線」、および公式サイトvirtualmixdeck.htmlの
+// 料金表示に合わせる）。買い切りライセンス解除で有料版のGRID_ROWS/GRID_COLS・ミキサー無制限・
+// プリセット管理・複数ページが使えるようになる。
+const FREE_GRID_ROWS = 2;
+const FREE_GRID_COLS = 5;
+const FREE_MIXER_LIMIT = 2;
+// VMD決済・フィードバックは、既存のmultistream-payment-backend（Cloudflare Worker）に
+// 相乗りする方針（決済方針.md参照）。VMD専用のバックエンドURL設定UIは今回設けない。
+const PAYMENT_BACKEND_URL = 'https://multicastdeck.mumeinoapp.workers.dev';
 const ICONS_DIR = path.join(__dirname, 'renderer', 'assets', 'icons');
 // ユーザーが設定したカスタム画像アイコンの保存先。プリセットSVGアイコン(ICONS_DIR、
 // アプリ同梱)とは別に、userData配下（アンインストール後も残る書き込み可能領域）に置く。
@@ -78,8 +87,14 @@ const store = new Store({
     mixerEntries: [],
     presets: [],
     lastVolumeLevels: { process: {}, wavelink: {} },
+    unlocked: false,
+    licenseKey: null,
   },
 });
+
+function isUnlocked() {
+  return !!store.get('unlocked');
+}
 
 // 「ページ1」等の自動採番名がついたページだけ、ページの追加/削除のたびに
 // 現在の並び順に応じて振り直す。ユーザーが手動リネームしたページ（autoNamed: false）は対象外。
@@ -95,10 +110,12 @@ function renumberAutoPages(pages) {
 }
 
 function getConfig() {
+  const unlocked = isUnlocked();
   return {
-    grid: { rows: GRID_ROWS, cols: GRID_COLS },
+    grid: unlocked ? { rows: GRID_ROWS, cols: GRID_COLS } : { rows: FREE_GRID_ROWS, cols: FREE_GRID_COLS },
     activePageId: store.get('activePageId'),
     pages: store.get('pages'),
+    unlocked,
   };
 }
 
@@ -158,11 +175,14 @@ function setActivePage(pageId) {
 
 function addPage(name) {
   const pages = store.get('pages');
+  if (!isUnlocked() && pages.length >= 1) {
+    return { ok: false, error: '複数ページの追加は有料版限定です。「購入・ライセンス」から購入するとご利用いただけます。' };
+  }
   const id = `page-${crypto.randomUUID()}`;
   pages.push({ id, name: name || `ページ${pages.length + 1}`, buttons: [], autoNamed: !name });
   store.set('pages', renumberAutoPages(pages));
   store.set('activePageId', id);
-  return id;
+  return { ok: true, id };
 }
 
 function removePage(pageId) {
@@ -197,6 +217,7 @@ function listPresets() {
 }
 
 function savePreset(name) {
+  if (!isUnlocked()) return { ok: false, error: 'プリセット管理は有料版限定です。「購入・ライセンス」から購入するとご利用いただけます。' };
   const trimmed = (name || '').trim();
   if (!trimmed) return { ok: false, error: 'プリセット名を入力してください' };
   const presets = listPresets();
@@ -244,6 +265,7 @@ function removePreset(presetId) {
 // プリセット読込時はページIDを新規UUIDへ再採番する。保存時のIDをそのまま復元すると、
 // 同じプリセットを複数回読み込んだ場合や複数プリセット間でIDが衝突しうるため。
 function loadPreset(presetId) {
+  if (!isUnlocked()) return { ok: false, error: 'プリセット管理は有料版限定です。「購入・ライセンス」から購入するとご利用いただけます。' };
   const presets = listPresets();
   const preset = presets.find((p) => p.id === presetId);
   if (!preset) return { ok: false, error: 'プリセットが見つかりません' };
@@ -281,6 +303,9 @@ function listMixerEntries() {
 // `(entry.sourceType || 'process')` 相当のフォールバックを行うこと。
 function addMixerEntry({ sourceType, processName, label, iconFile, customIcon, windowHint, channelId, channelName, localMixId, streamMixId }) {
   const entries = store.get('mixerEntries');
+  if (!isUnlocked() && entries.length >= FREE_MIXER_LIMIT) {
+    return { ok: false, error: `ミキサーは無料版では${FREE_MIXER_LIMIT}枠までです。「購入・ライセンス」から購入すると無制限になります。` };
+  }
   const type = sourceType === 'wavelink' ? 'wavelink' : 'process';
   const entry =
     type === 'wavelink'
@@ -589,6 +614,65 @@ async function executeAction(action) {
   }
 }
 
+// --- 買い切りライセンス（決済・解除） ---
+// multistream-payment-backend（Cloudflare Worker、MultiCastDeckと共用）の
+// /vmd/checkout・/vmd/license/verifyを呼ぶ。ログイン機能はVMDには無いため、
+// メールアドレスを都度渡すだけのゲスト購入方式にしている（決済方針.md参照）。
+
+async function paymentBackendFetch(path, options) {
+  const res = await fetch(`${PAYMENT_BACKEND_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return body;
+}
+
+function getLicenseStatus() {
+  return { unlocked: isUnlocked(), licenseKey: store.get('licenseKey') };
+}
+
+async function startVmdPurchase(email) {
+  try {
+    const body = await paymentBackendFetch('/vmd/checkout', { body: JSON.stringify({ email }) });
+    await shell.openExternal(body.checkoutUrl);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+}
+
+async function verifyVmdLicenseKey(key) {
+  const trimmed = (key || '').trim();
+  if (!trimmed) return { ok: false, error: 'ライセンスキーを入力してください' };
+  try {
+    const body = await paymentBackendFetch('/vmd/license/verify', { body: JSON.stringify({ key: trimmed }) });
+    if (!body.valid) return { ok: false, error: 'ライセンスキーが無効です。購入時のメールに記載のキーをご確認ください。' };
+    store.set('unlocked', true);
+    store.set('licenseKey', trimmed);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+}
+
+// --- フィードバック送信（MultiCastDeckと同じ /feedback エンドポイントへproduct指定で転送） ---
+
+async function sendFeedback(subject, body) {
+  try {
+    await paymentBackendFetch('/feedback', {
+      body: JSON.stringify({ subject, body, product: 'VirtualMixDeck' }),
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+}
+
 let mainWindow = null;
 
 function createWindow() {
@@ -711,6 +795,12 @@ app.whenReady().then(() => {
       return { ok: false, error: String(e.message || e) };
     }
   });
+
+  ipcMain.handle('license:getStatus', () => getLicenseStatus());
+  ipcMain.handle('license:startPurchase', (_e, email) => startVmdPurchase(email));
+  ipcMain.handle('license:verify', (_e, key) => verifyVmdLicenseKey(key));
+
+  ipcMain.handle('feedback:send', (_e, { subject, body }) => sendFeedback(subject, body));
 
   ipcMain.handle('app:getVersion', () => app.getVersion());
 
