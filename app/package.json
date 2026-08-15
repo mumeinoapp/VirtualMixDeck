@@ -33,6 +33,7 @@
     "directories": {
       "output": "release"
     },
+    "icon": "build/icon.ico",
     "extraResources": [
       {
         "from": "../helper/bin/Release/net10.0-windows/win-x64/publish/VirtualMixDeck.Helper.exe",
