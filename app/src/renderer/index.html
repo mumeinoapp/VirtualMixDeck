@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>VirtualMixDeck</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav id="app-menu-bar">
+    <div class="menu-bar-item" data-menu="file">
+      ファイル
+      <div class="menu-bar-dropdown">
+        <div class="menu-bar-dropdown-item" data-action="quit">終了</div>
+      </div>
+    </div>
+    <div class="menu-bar-item" data-menu="view">
+      表示
+      <div class="menu-bar-dropdown">
+        <div class="menu-bar-dropdown-item" data-action="reload">再読み込み</div>
+        <div class="menu-bar-dropdown-item" data-action="toggle-devtools">開発者ツール</div>
+      </div>
+    </div>
+    <div class="menu-bar-item" data-menu="help">
+      ヘルプ
+      <div class="menu-bar-dropdown">
+        <div class="menu-bar-dropdown-item" data-action="help-shortcut">ショートカットボタンの使い方</div>
+        <div class="menu-bar-dropdown-item" data-action="help-mixer">音量ミキサーの使い方</div>
+        <div class="menu-bar-dropdown-item" data-action="help-obs">OBS連携の設定方法</div>
+        <div class="menu-bar-dropdown-item" data-action="help-preset">プリセットの使い方</div>
+      </div>
+    </div>
+    <div class="menu-bar-item" data-menu="version">
+      バージョン
+      <div class="menu-bar-dropdown">
+        <div class="menu-bar-dropdown-item disabled" id="version-display">現在のバージョン: 取得中...</div>
+      </div>
+    </div>
+    <div class="window-controls">
+      <button id="win-minimize-btn" class="win-btn" title="最小化">－</button>
+      <button id="win-close-btn" class="win-btn win-btn-close" title="閉じる">×</button>
+    </div>
+  </nav>
+
+  <header>
+    <span class="header-title">VirtualMixDeck</span>
+    <div class="header-right">
+      <span id="obs-status">OBS: 未接続</span>
+      <button id="obs-settings-btn" class="btn-ghost">OBS設定</button>
+      <button id="edit-toggle" class="btn-ghost">編集モード: OFF</button>
+    </div>
+  </header>
+
+  <main id="main-layout">
+    <section id="mixer-panel">
+      <div class="panel-heading">
+        <h2>音量ミキサー</h2>
+        <button id="mixer-add-btn" class="btn-round" title="アプリを追加">＋</button>
+      </div>
+      <div id="mixer-list" class="scroll-y"></div>
+    </section>
+
+    <section id="grid-panel">
+      <div class="panel-heading">
+        <h2>ショートカット</h2>
+        <div class="pager">
+          <button id="page-prev" class="btn-round">＜</button>
+          <span id="page-label" title="ダブルクリックで名前を変更">ページ1 / 1</span>
+          <button id="page-next" class="btn-round">＞</button>
+          <button id="page-add" class="btn-round" title="ページ追加">＋</button>
+          <button id="page-remove" class="btn-round" title="このページを削除">－</button>
+        </div>
+      </div>
+      <div class="preset-bar">
+        <select id="preset-select">
+          <option value="">プリセットを選択...</option>
+        </select>
+        <button id="preset-load-btn" class="btn-ghost">読み込む</button>
+        <button id="preset-save-btn" class="btn-ghost">現在の構成を保存</button>
+        <button id="preset-manage-btn" class="btn-ghost">管理</button>
+      </div>
+      <div id="grid"></div>
+    </section>
+  </main>
+
+  <dialog id="edit-dialog">
+    <form method="dialog" id="edit-form">
+      <h2>ボタン編集</h2>
+      <label>ラベル<input type="text" id="f-label" /></label>
+      <label>種類
+        <select id="f-type">
+          <option value="launch_app">アプリ起動</option>
+          <option value="open_url">URLを開く</option>
+          <option value="local_volume">ローカル音量操作</option>
+          <option value="stream_volume">配信音量操作</option>
+          <option value="hotkey">ホットキー送信</option>
+          <option value="obs">OBS操作</option>
+        </select>
+      </label>
+      <label data-types="launch_app">実行ファイルパス<input type="text" id="f-path" /></label>
+      <label data-types="launch_app">引数（任意）<input type="text" id="f-args" /></label>
+      <label data-types="open_url">URL<input type="text" id="f-url" /></label>
+      <label data-types="local_volume stream_volume">対象プロセス名（例: chrome）
+        <div class="process-input-row">
+          <input type="text" id="f-processName" />
+          <button type="button" id="f-processName-pick" class="btn-ghost btn-pick">起動中のアプリから選択</button>
+        </div>
+        <div id="f-processName-list" class="app-pick-list scroll-y" hidden></div>
+      </label>
+      <label data-types="local_volume stream_volume">音量（0.0〜1.0）<input type="text" id="f-level" placeholder="0.5" /></label>
+      <label data-types="hotkey">キー組み合わせ（例: ctrl+shift+a）<input type="text" id="f-combo" /></label>
+      <label data-types="obs">OBS操作の種類
+        <select id="f-obsOp">
+          <option value="switch_scene">シーン切替え</option>
+          <option value="start_stream">配信開始</option>
+          <option value="stop_stream">配信停止</option>
+        </select>
+      </label>
+      <label data-types="obs">シーン名（シーン切替え時のみ）<input type="text" id="f-sceneName" /></label>
+      <label>アイコン（先頭のマスをクリック、または画像をドラッグ&ドロップでカスタム画像を設定）</label>
+      <div id="f-icon-picker" class="icon-picker scroll-y"></div>
+      <input type="hidden" id="f-icon" />
+      <input type="hidden" id="f-custom-icon" />
+      <div class="dialog-buttons">
+        <button type="button" id="f-delete">削除</button>
+        <button type="button" id="f-cancel">キャンセル</button>
+        <button type="button" id="f-save">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="mixer-add-dialog">
+    <h2>ミキサーにアプリを追加</h2>
+
+    <div id="m-wavelink-fields">
+      <p id="m-wavelink-status" class="dialog-hint"></p>
+      <label>Wave Linkチャンネル<select id="m-channel"></select></label>
+      <label>ローカル<img class="inline-label-icon" src="assets/icons/Monitor%20Output%20Toggle%20Headphone.svg" alt="ローカル" />用ミックス<select id="m-localMix"></select></label>
+      <label>配信<img class="inline-label-icon" src="assets/icons/Output%20Stream.svg" alt="配信" />用ミックス<select id="m-streamMix"></select></label>
+    </div>
+
+    <label>表示名（任意）<input type="text" id="m-label" /></label>
+    <label>アイコン（先頭のマスをクリック、または画像をドラッグ&ドロップでカスタム画像を設定）</label>
+    <div id="m-icon-picker" class="icon-picker scroll-y"></div>
+    <input type="hidden" id="m-icon" />
+    <input type="hidden" id="m-custom-icon" />
+    <div class="dialog-buttons">
+      <button type="button" id="m-cancel">キャンセル</button>
+      <button type="button" id="m-save">追加</button>
+    </div>
+  </dialog>
+
+  <dialog id="window-pick-dialog">
+    <h2>対象ウィンドウを選択</h2>
+    <p class="dialog-hint">同じアプリで複数のウィンドウが開いている場合、配信でキャプチャしたいウィンドウを選んでください。</p>
+    <div id="window-pick-list" class="app-pick-list scroll-y"></div>
+    <div class="dialog-buttons">
+      <button type="button" id="window-pick-cancel">キャンセル</button>
+    </div>
+  </dialog>
+
+  <dialog id="obs-dialog">
+    <h2>OBS接続設定</h2>
+    <label>WebSocket URL<input type="text" id="obs-url" placeholder="ws://127.0.0.1:4455" /></label>
+    <label>パスワード<input type="password" id="obs-password" /></label>
+    <div class="dialog-buttons">
+      <button type="button" id="obs-cancel">閉じる</button>
+      <button type="button" id="obs-connect">接続</button>
+    </div>
+  </dialog>
+
+  <dialog id="preset-save-dialog">
+    <h2 id="preset-save-dialog-title">プリセットとして保存</h2>
+    <label>プリセット名<input type="text" id="p-name" maxlength="30" /></label>
+    <div class="dialog-buttons">
+      <button type="button" id="p-cancel">キャンセル</button>
+      <button type="button" id="p-save">保存</button>
+    </div>
+  </dialog>
+
+  <dialog id="preset-manage-dialog">
+    <h2>プリセット管理</h2>
+    <div id="preset-manage-list" class="scroll-y"></div>
+    <div class="dialog-buttons">
+      <button type="button" id="preset-manage-close">閉じる</button>
+    </div>
+  </dialog>
+
+  <dialog id="app-alert-dialog" class="app-msg-dialog">
+    <h2 id="app-alert-title">お知らせ</h2>
+    <p id="app-alert-message"></p>
+    <div class="dialog-buttons">
+      <button type="button" id="app-alert-ok">OK</button>
+    </div>
+  </dialog>
+
+  <dialog id="app-confirm-dialog" class="app-msg-dialog">
+    <h2 id="app-confirm-title">確認</h2>
+    <p id="app-confirm-message"></p>
+    <div class="dialog-buttons">
+      <button type="button" id="app-confirm-cancel">キャンセル</button>
+      <button type="button" id="app-confirm-ok">OK</button>
+    </div>
+  </dialog>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

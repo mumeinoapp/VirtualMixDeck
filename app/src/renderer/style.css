@@ -1,0 +1,840 @@
+:root {
+  --brand-blue: #4f8cff;
+  --brand-cyan: #22d3ee;
+  --brand-gradient: linear-gradient(135deg, #4f8cff 0%, #22d3ee 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #6ea1ff 0%, #4de8ff 100%);
+  --bg-app: #17171c;
+  --bg-card: #26262e;
+  --bg-card-2: #2c2c35;
+  --border-subtle: #3a3b44;
+  --text-main: #eee;
+  --text-dim: #999;
+}
+
+* {
+  box-sizing: border-box;
+  /* 標準のscrollbar-color/width。::-webkit-scrollbarが効かない要素（<dialog>自体の
+     オーバーフロー等）でもOS標準色ではなくブランドカラーで表示されるようにする。 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--brand-blue) transparent;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: var(--bg-app);
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---- 自作メニューバー（MultiCastDeck方式踏襲） ---- */
+#app-menu-bar {
+  display: flex;
+  background: #0f0f13;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.menu-bar-item {
+  position: relative;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--text-dim);
+  -webkit-app-region: no-drag;
+}
+
+.menu-bar-item:hover {
+  color: var(--text-main);
+  background: #1c1c22;
+}
+
+.menu-bar-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 160px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0 6px 6px 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  z-index: 100;
+}
+
+.menu-bar-item.open .menu-bar-dropdown {
+  display: block;
+}
+
+.menu-bar-dropdown-item {
+  padding: 8px 14px;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.menu-bar-dropdown-item:hover {
+  background: var(--brand-gradient);
+  color: #0b0b0d;
+}
+
+.menu-bar-dropdown-item.disabled {
+  cursor: default;
+  color: var(--text-dim);
+}
+
+.menu-bar-dropdown-item.disabled:hover {
+  background: none;
+  color: var(--text-dim);
+}
+
+/* ---- ウィンドウ操作ボタン（frame:false化に伴う自作の最小化/閉じるボタン） ---- */
+.window-controls {
+  display: flex;
+  margin-left: auto;
+  -webkit-app-region: no-drag;
+}
+
+.win-btn {
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  width: 40px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.win-btn:hover {
+  background: #1c1c22;
+  color: var(--text-main);
+}
+
+.win-btn-close:hover {
+  background: #c42b1c;
+  color: #fff;
+}
+
+/* ---- ヘッダー ---- */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #1c1c22;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.header-title {
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#obs-status {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+#obs-status.connected {
+  color: #6cd97e;
+}
+
+.btn-ghost {
+  cursor: pointer;
+  background: var(--bg-card-2);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.btn-ghost:hover {
+  border-color: var(--brand-blue);
+}
+
+.btn-ghost.active {
+  background: var(--brand-gradient);
+  color: #0b0b0d;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.btn-round {
+  cursor: pointer;
+  background: var(--bg-card-2);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  width: 26px;
+  height: 26px;
+  line-height: 1;
+  font-size: 14px;
+}
+
+.btn-round:hover {
+  background: var(--brand-gradient);
+  color: #0b0b0d;
+  border-color: transparent;
+}
+
+/* ---- レイアウト ---- */
+#main-layout {
+  flex: 1;
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  min-height: 0;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.panel-heading h2 {
+  font-size: 13px;
+  margin: 0;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ---- 音量ミキサーパネル ---- */
+#mixer-panel {
+  width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#mixer-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mixer-entry {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+    var(--brand-gradient) border-box;
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.12),
+    0 0 14px rgba(79, 140, 255, 0.16),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.mixer-entry-top {
+  display: flex;
+  gap: 10px;
+}
+
+/* 削除/対象ウィンドウの2ボタンを、上段(アイコン列/フェーダー列)と同じカラム幅で
+   横並びにする行。カラム幅を揃えることで、削除は常にアイコン直下、対象ウィンドウは
+   常にフェーダー直下に来て、かつ2つのボタンの文字の高さが揃う。 */
+.mixer-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mixer-entry-icon-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  flex-shrink: 0;
+}
+
+.mixer-entry-name {
+  width: 56px;
+  flex-shrink: 0;
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-main);
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.mixer-entry-icon-wrap {
+  display: inline-flex;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.mixer-entry-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: block;
+}
+
+/* 赤枠(box-shadow)は薄暗い演出(opacity/grayscale)と別要素に分離してある。
+   同一要素に重ねるとopacityが枠線ごと薄めてしまい視認できなくなるため。 */
+.mixer-entry-icon-wrap.muted {
+  box-shadow: 0 0 0 2px #ff5252;
+}
+
+.mixer-entry-icon-wrap.muted .mixer-entry-icon {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.mixer-entry-window {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mixer-entry-window:hover {
+  color: var(--text-main);
+}
+
+/* windowHintが（タブ切り替え等でタイトルが変わり）一致しなくなり、候補の先頭へ
+   フォールバックした状態。ユーザーに再選択を促すための警告色。 */
+.mixer-entry-window.hint-stale {
+  color: #ffb020;
+}
+
+.mixer-entry-window.hint-stale:hover {
+  color: #ffc866;
+}
+
+.mixer-entry-remove {
+  width: 56px;
+  flex-shrink: 0;
+  text-align: center;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.mixer-entry-remove:hover {
+  color: #ff6b6b;
+}
+
+.mixer-entry-gauges {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mixer-gauge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mixer-gauge-icon-wrap {
+  display: inline-flex;
+  border-radius: 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.mixer-gauge-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: block;
+}
+
+/* 赤枠(box-shadow)は薄暗い演出(opacity/grayscale)と別要素に分離してある。
+   同一要素に重ねるとopacityが枠線ごと薄めてしまい視認できなくなるため。 */
+.mixer-gauge-icon-wrap.muted {
+  box-shadow: 0 0 0 2px #ff5252;
+}
+
+.mixer-gauge-icon-wrap.muted .mixer-gauge-icon {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.mixer-gauge-track.muted .mixer-gauge-fill {
+  background: #4a4a52;
+}
+
+.mixer-gauge-track {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  background: #1a1a1f;
+  border-radius: 999px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+}
+
+.mixer-gauge-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: var(--brand-gradient);
+  border-radius: 999px;
+}
+
+.mixer-gauge-track.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.mixer-gauge-pct {
+  width: 34px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+/* ---- ショートカットグリッドパネル ---- */
+#grid-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#page-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  min-width: 80px;
+  text-align: center;
+}
+
+.preset-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.preset-bar select {
+  flex: 0 1 auto;
+  width: 20em;
+  min-width: 0;
+  padding: 6px 8px;
+  background: #1a1a1f;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.preset-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.preset-manage-row:last-child {
+  border-bottom: none;
+}
+
+.preset-manage-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.preset-manage-row button {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card-2);
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.preset-manage-row button:hover {
+  border-color: var(--brand-blue);
+}
+
+#grid {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  justify-content: start;
+  align-content: center;
+}
+
+.deck-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  font-size: 12px;
+  container-type: inline-size;
+}
+
+.deck-btn:hover {
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 14px rgba(79, 140, 255, 0.22);
+}
+
+.deck-btn.empty {
+  border-style: dashed;
+  color: #555;
+}
+
+.deck-btn.dragging {
+  opacity: 0.4;
+}
+
+.deck-btn.drag-over {
+  box-shadow: inset 0 0 0 2px var(--brand-blue);
+}
+
+.deck-btn-icon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* 編集モードのドラッグ&ドロップでdragenter/dragleaveが子要素との出入りで
+     余分に発火し drag-over のハイライトがちらつくのを防ぐため、ボタン本体
+     だけがドラッグイベントの対象になるようにする */
+  pointer-events: none;
+}
+
+.deck-btn-label {
+  position: absolute;
+  pointer-events: none;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 6% 8%;
+  background: rgba(15, 15, 19, 0.72);
+  color: var(--text-main);
+  font-size: clamp(9px, 13cqw, 15px);
+  line-height: 1.2;
+  text-align: center;
+  word-break: break-word;
+}
+
+#page-label.editing {
+  display: inline-block;
+  background: #1a1a1f;
+  border: 1px solid var(--brand-blue);
+  border-radius: 6px;
+  color: var(--text-main);
+  font-size: 12px;
+  padding: 2px 6px;
+  min-width: 80px;
+  text-align: center;
+}
+
+#page-label:not(.editing) {
+  cursor: text;
+}
+
+#page-label:not(.editing):hover {
+  color: var(--text-main);
+}
+
+/* ---- ダイアログ ---- */
+dialog {
+  background: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 18px;
+  min-width: 340px;
+  max-height: 80vh;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+dialog h2 {
+  margin-top: 0;
+  font-size: 14px;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+dialog label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.inline-label-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+dialog input, dialog select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 7px 8px;
+  background: #1a1a1f;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+dialog input:focus, dialog select:focus {
+  outline: none;
+  border-color: var(--brand-blue);
+}
+
+.icon-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 40px);
+  justify-content: space-evenly;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 4px;
+  background: #1a1a1f;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 12px;
+}
+
+.icon-picker-item {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  padding: 0;
+  background: none;
+}
+
+.icon-picker-item img {
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  display: block;
+}
+
+.icon-picker-item.selected {
+  border-color: var(--brand-cyan);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
+}
+
+.icon-picker-custom {
+  border: 2px dashed var(--border-subtle);
+  background: #22222a;
+  color: var(--text-secondary, #9ca3af);
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.icon-picker-custom.drag-over {
+  border-color: var(--brand-cyan);
+  background: rgba(34, 211, 238, 0.12);
+}
+
+.icon-picker-custom.selected {
+  border-style: solid;
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dialog-buttons button {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card-2);
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.dialog-buttons button:hover {
+  border-color: var(--brand-blue);
+}
+
+#f-delete {
+  margin-right: auto;
+  background: #6b2c2c;
+  border-color: #6b2c2c;
+}
+
+/* ---- プロセス名入力 + 「起動中のアプリから選択」 ---- */
+.process-input-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.process-input-row input {
+  margin-top: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-pick {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 6px 10px;
+}
+
+.app-pick-list {
+  margin-top: 6px;
+  max-height: 140px;
+  overflow-y: auto;
+  background: #1a1a1f;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.app-pick-empty {
+  padding: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.app-pick-item {
+  width: 100%;
+  display: block;
+  text-align: left;
+  padding: 7px 10px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.app-pick-item:last-child {
+  border-bottom: none;
+}
+
+.app-pick-item:hover {
+  background: var(--brand-gradient);
+  color: #0b0b0d;
+}
+
+/* ---- 配信キャプチャ対象ウィンドウ選択（同一プロセス複数ウィンドウ対応） ---- */
+.window-hint-display {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.dialog-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+}
+
+/* ---- 通知・確認ダイアログ（window.alert/confirmの代替、オリジナルデザイン） ---- */
+.app-msg-dialog {
+  min-width: 300px;
+  max-width: 420px;
+}
+
+.app-msg-dialog p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-main);
+  white-space: pre-wrap;
+}
+
+/* ---- カスタムスクロールバー（Claude-2nd-Brain オリジナル要素踏襲） ---- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--brand-gradient);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-gradient-hover);
+  background-clip: padding-box;
+}
