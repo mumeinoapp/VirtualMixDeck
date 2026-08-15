@@ -6,7 +6,12 @@
   "main": "src/main.js",
   "private": true,
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "clean:release": "node -e \"require('fs').rmSync('release', { recursive: true, force: true })\"",
+    "prebuild": "npm run clean:release",
+    "build": "electron-builder",
+    "prebuild:win": "npm run clean:release",
+    "build:win": "electron-builder --win"
   },
   "devDependencies": {
     "electron": "^31.0.0",
@@ -16,6 +21,34 @@
     "electron-store": "^8.2.0",
     "obs-websocket-js": "^5.0.6",
     "@raphiiko/wavelink-ts": "^2.0.0"
+  },
+  "build": {
+    "appId": "com.mumeinoapp.virtualmixdeck",
+    "productName": "VirtualMixDeck",
+    "copyright": "Copyright © 2026 yato",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "extraResources": [
+      {
+        "from": "../helper/bin/Release/net10.0-windows/win-x64/publish/VirtualMixDeck.Helper.exe",
+        "to": "helper/VirtualMixDeck.Helper.exe"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    }
   },
   "allowScripts": {
     "electron@31.7.7": true

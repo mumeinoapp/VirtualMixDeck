@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const readline = require('readline');
+const { app } = require('electron');
 
 let child = null;
 let rl = null;
@@ -15,8 +16,15 @@ let nextId = 1;
 const pending = new Map(); // id -> { resolve, reject }
 
 function resolveHelperExePath() {
+  // パッケージ後: electron-builderのextraResourcesで
+  // resources/helper/VirtualMixDeck.Helper.exe に配置される（package.jsonのbuild.extraResources参照）。
+  if (app.isPackaged) {
+    const packagedPath = path.join(process.resourcesPath, 'helper', 'VirtualMixDeck.Helper.exe');
+    if (fs.existsSync(packagedPath)) return packagedPath;
+    throw new Error(`ヘルパーexeが見つかりません: ${packagedPath}`);
+  }
+
   // 開発時: リポジトリ内のdotnet buildの出力先を直接参照する。
-  // パッケージ後の配布時には resources 配下に配置する想定（未実装、要対応）。
   const devPath = path.join(
     __dirname,
     '..',
