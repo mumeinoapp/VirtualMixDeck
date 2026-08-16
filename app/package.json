@@ -1,6 +1,6 @@
 {
   "name": "virtualmixdeck",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Stream Deck風ショートカット + アプリ別ローカル/配信音量ミキサー + OBS連携デスクトップアプリ「VirtualMixDeck」",
   "author": "yato",
   "main": "src/main.js",
