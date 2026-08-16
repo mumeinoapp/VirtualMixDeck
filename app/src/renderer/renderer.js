@@ -202,7 +202,7 @@ function layoutGrid() {
 window.addEventListener('resize', () => requestAnimationFrame(layoutGrid));
 
 function renderGrid() {
-  const { rows, cols } = config.grid;
+  const { rows, cols, freeRows } = config.grid;
   layoutGrid();
   gridEl.innerHTML = '';
 
@@ -211,6 +211,15 @@ function renderGrid() {
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
+      // 未購入時は下側の行をロック表示にし、干渉（クリック・編集・ドラッグ）できないようにする。
+      if (!config.unlocked && row >= freeRows) {
+        const lockedBtn = document.createElement('button');
+        lockedBtn.className = 'deck-btn locked';
+        lockedBtn.disabled = true;
+        lockedBtn.textContent = '有料版限定機能';
+        gridEl.appendChild(lockedBtn);
+        continue;
+      }
       const btnData = findButton(row, col);
       const btn = document.createElement('button');
       btn.className = 'deck-btn' + (btnData ? '' : ' empty');
@@ -1130,6 +1139,47 @@ async function openLicenseDialog() {
   licenseKeyInputEl.value = '';
   licenseDialogEl.showModal();
 }
+
+// ---- ライセンスキー確認（メール＋確認コード） ----
+// 一般利用者向けには「ライセンスキーが見つからない場合」のメール確認機能に見える表示だが、
+// 内部的には決済方針.md記載の開発者アカウント限定アンロックと同じ確認コードログインを使う。
+// 開発者本人以外がこのフローを完了しても、isUnlocked()側の判定でunlocked:falseが返るだけで
+// 見た目上は「ライセンス情報が見つからない」という自然な結果になる（devAuthLogoutのIPCは
+// UIから外したが内部関数としては残し、必要な際はコンソール等から呼び出せる）。
+
+const devAuthEmailEl = document.getElementById('dev-auth-email');
+const devAuthCodeEl = document.getElementById('dev-auth-code');
+
+document.getElementById('dev-auth-request-btn').addEventListener('click', async () => {
+  const email = devAuthEmailEl.value.trim();
+  if (!email) {
+    await showAppAlert('メールアドレスを入力してください');
+    return;
+  }
+  const result = await window.virtualMixDeck.devAuthRequestCode(email);
+  if (!result.ok) {
+    await showAppAlert(result.error, 'エラー');
+    return;
+  }
+  await showAppAlert('確認コードを送信しました。メールをご確認ください。');
+});
+
+document.getElementById('dev-auth-verify-btn').addEventListener('click', async () => {
+  const email = devAuthEmailEl.value.trim();
+  const code = devAuthCodeEl.value.trim();
+  const result = await window.virtualMixDeck.devAuthVerifyCode(email, code);
+  if (!result.ok) {
+    await showAppAlert(result.error, 'エラー');
+    return;
+  }
+  devAuthCodeEl.value = '';
+  if (result.unlocked) {
+    await showAppAlert('ライセンス情報を確認できました。');
+    await reload();
+  } else {
+    await showAppAlert('このメールアドレスに紐づくライセンス情報が見つかりませんでした。');
+  }
+});
 
 document.getElementById('license-close').addEventListener('click', () => licenseDialogEl.close());
 

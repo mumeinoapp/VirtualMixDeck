@@ -17,7 +17,6 @@
       表示
       <div class="menu-bar-dropdown">
         <div class="menu-bar-dropdown-item" data-action="reload">再読み込み</div>
-        <div class="menu-bar-dropdown-item" data-action="toggle-devtools">開発者ツール</div>
       </div>
     </div>
     <div class="menu-bar-item" data-menu="help">
@@ -206,6 +205,15 @@
       <input type="text" id="license-key-input" placeholder="VMD-XXXX-XXXX-XXXX" />
     </label>
     <button type="button" id="license-verify-btn" class="btn-brand-outline">キーを入力して解除する</button>
+
+    <details id="dev-auth-section">
+      <summary>ライセンスキーが見つからない場合</summary>
+      <p class="dialog-hint">購入時のメールアドレスでライセンス情報を確認できます。</p>
+      <label>メールアドレス<input type="email" id="dev-auth-email" placeholder="you@example.com" /></label>
+      <button type="button" id="dev-auth-request-btn" class="btn-brand-outline">確認コードを送信</button>
+      <label>確認コード（6桁）<input type="text" id="dev-auth-code" placeholder="123456" maxlength="6" /></label>
+      <button type="button" id="dev-auth-verify-btn" class="btn-brand-outline">確認する</button>
+    </details>
 
     <div class="dialog-buttons">
       <button type="button" id="license-close">閉じる</button>

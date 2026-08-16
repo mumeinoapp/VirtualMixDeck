@@ -544,6 +544,22 @@ header {
   color: #555;
 }
 
+.deck-btn.locked {
+  background: rgba(255, 255, 255, 0.02);
+  border-style: dashed;
+  color: #555;
+  cursor: not-allowed;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 8%;
+  text-align: center;
+}
+
+.deck-btn.locked:hover {
+  border-color: var(--border-subtle);
+  box-shadow: none;
+}
+
 .deck-btn.dragging {
   opacity: 0.4;
 }

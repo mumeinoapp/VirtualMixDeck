@@ -52,6 +52,11 @@ contextBridge.exposeInMainWorld('virtualMixDeck', {
   licenseStartPurchase: (email) => ipcRenderer.invoke('license:startPurchase', email),
   licenseVerify: (key) => ipcRenderer.invoke('license:verify', key),
 
+  devAuthGetStatus: () => ipcRenderer.invoke('devAuth:getStatus'),
+  devAuthRequestCode: (email) => ipcRenderer.invoke('devAuth:requestCode', email),
+  devAuthVerifyCode: (email, code) => ipcRenderer.invoke('devAuth:verifyCode', { email, code }),
+  devAuthLogout: () => ipcRenderer.invoke('devAuth:logout'),
+
   sendFeedback: (subject, body) => ipcRenderer.invoke('feedback:send', { subject, body }),
 
   getAppVersion: () => ipcRenderer.invoke('app:getVersion'),

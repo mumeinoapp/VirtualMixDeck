@@ -32,7 +32,6 @@ const GRID_COLS = 5;
 // 料金表示に合わせる）。買い切りライセンス解除で有料版のGRID_ROWS/GRID_COLS・ミキサー無制限・
 // プリセット管理・複数ページが使えるようになる。
 const FREE_GRID_ROWS = 2;
-const FREE_GRID_COLS = 5;
 const FREE_MIXER_LIMIT = 2;
 // VMD決済・フィードバックは、既存のmultistream-payment-backend（Cloudflare Worker）に
 // 相乗りする方針（決済方針.md参照）。VMD専用のバックエンドURL設定UIは今回設けない。
@@ -89,11 +88,17 @@ const store = new Store({
     lastVolumeLevels: { process: {}, wavelink: {} },
     unlocked: false,
     licenseKey: null,
+    devAuthToken: null,
+    devAuthEmail: null,
   },
 });
 
+// 開発者アカウント限定の有料機能解除は、後述のisDeveloperEmail()と、メール確認コード
+// ログイン（devAuthToken）の両方が揃っている場合のみ有効になる（メールアドレス文字列を
+// 知っているだけではなりすませない。決済方針.md参照）。
 function isUnlocked() {
-  return !!store.get('unlocked');
+  if (store.get('unlocked')) return true;
+  return !!store.get('devAuthToken') && isDeveloperEmail(store.get('devAuthEmail'));
 }
 
 // 「ページ1」等の自動採番名がついたページだけ、ページの追加/削除のたびに
@@ -112,7 +117,9 @@ function renumberAutoPages(pages) {
 function getConfig() {
   const unlocked = isUnlocked();
   return {
-    grid: unlocked ? { rows: GRID_ROWS, cols: GRID_COLS } : { rows: FREE_GRID_ROWS, cols: FREE_GRID_COLS },
+    // 無料版でもグリッド自体は常にフル表示し、rendererが未購入時のみ下側の行を
+    // ロック表示にする（枠数自体を減らす旧方式から変更。free段数はfreeRowsで渡す）。
+    grid: { rows: GRID_ROWS, cols: GRID_COLS, freeRows: FREE_GRID_ROWS },
     activePageId: store.get('activePageId'),
     pages: store.get('pages'),
     unlocked,
@@ -660,6 +667,61 @@ async function verifyVmdLicenseKey(key) {
   }
 }
 
+// --- 開発者アカウント限定ログイン（メール＋6桁確認コード） ---
+// multistream-payment-backendの/auth/request-code・/auth/verify-code（MultiCastDeckの
+// 会員ログインと共用、製品非依存の汎用実装）を使い、実際にそのメールアドレスの受信箱に
+// 届いたコードを入力できた場合のみdevAuthToken/devAuthEmailを保存する。isDeveloperEmail()
+// と組み合わせたisUnlocked()側の判定で、開発者本人以外はなりすませない（決済方針.md参照）。
+
+const DEVELOPER_EMAIL = 'mumeinoapp@gmail.com';
+
+function isDeveloperEmail(email) {
+  return String(email || '').trim().toLowerCase() === DEVELOPER_EMAIL;
+}
+
+async function requestDevAuthCode(email) {
+  const trimmed = (email || '').trim();
+  if (!trimmed) return { ok: false, error: 'メールアドレスを入力してください' };
+  try {
+    await paymentBackendFetch('/auth/request-code', { body: JSON.stringify({ email: trimmed }) });
+    return { ok: true };
+  } catch (e) {
+    const msg = String(e.message || e);
+    if (msg === 'not_found') {
+      return { ok: false, error: 'このメールアドレスでの購入記録が見つかりませんでした。ご購入時にご入力いただいたメールアドレスをご確認ください。' };
+    }
+    return { ok: false, error: msg };
+  }
+}
+
+async function verifyDevAuthCode(email, code) {
+  const trimmedEmail = (email || '').trim();
+  const trimmedCode = (code || '').trim();
+  if (!trimmedEmail || !trimmedCode) return { ok: false, error: 'メールアドレスと確認コードを入力してください' };
+  try {
+    const body = await paymentBackendFetch('/auth/verify-code', {
+      body: JSON.stringify({ email: trimmedEmail, code: trimmedCode }),
+    });
+    if (!body.token) return { ok: false, error: '確認コードが正しくありません' };
+    store.set('devAuthToken', body.token);
+    store.set('devAuthEmail', trimmedEmail);
+    return { ok: true, unlocked: isUnlocked() };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+}
+
+function devAuthLogout() {
+  store.set('devAuthToken', null);
+  store.set('devAuthEmail', null);
+  return { ok: true };
+}
+
+function getDevAuthStatus() {
+  const email = store.get('devAuthEmail');
+  return { loggedIn: !!store.get('devAuthToken') && !!email, email: email || null };
+}
+
 // --- フィードバック送信（MultiCastDeckと同じ /feedback エンドポイントへproduct指定で転送） ---
 
 async function sendFeedback(subject, body) {
@@ -799,6 +861,11 @@ app.whenReady().then(() => {
   ipcMain.handle('license:getStatus', () => getLicenseStatus());
   ipcMain.handle('license:startPurchase', (_e, email) => startVmdPurchase(email));
   ipcMain.handle('license:verify', (_e, key) => verifyVmdLicenseKey(key));
+
+  ipcMain.handle('devAuth:getStatus', () => getDevAuthStatus());
+  ipcMain.handle('devAuth:requestCode', (_e, email) => requestDevAuthCode(email));
+  ipcMain.handle('devAuth:verifyCode', (_e, { email, code }) => verifyDevAuthCode(email, code));
+  ipcMain.handle('devAuth:logout', () => devAuthLogout());
 
   ipcMain.handle('feedback:send', (_e, { subject, body }) => sendFeedback(subject, body));
 
