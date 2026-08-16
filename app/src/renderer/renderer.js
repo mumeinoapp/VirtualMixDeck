@@ -1074,27 +1074,29 @@ const HELP_TEXTS = {
     'ショートカットボタンの登録方法：\n' +
     '1. ヘッダーの「編集モード」ボタンをONにする\n' +
     '2. 空いているマス（＋表示）をクリックする\n' +
-    '3. 種類（アプリ起動／URLを開く／音量操作／ホットキー送信／OBS操作）を選び、必要な項目とアイコンを設定する\n' +
-    '4. 「保存」で登録完了。編集モードをOFFにするとクリックでボタンを実行できます。',
+    '3. 種類（アプリ起動／URLを開く／ローカル音量操作／配信音量操作／ホットキー送信／OBS操作）を選び、必要な項目とアイコンを設定する\n' +
+    '4. 「保存」で登録完了。編集モードをOFFにするとクリックでボタンを実行できます。\n\n' +
+    '無料版では2×5枠まで使えます（下2段はグレー表示になり操作できません）。買い切り版にすると4×5枠がすべて使えるようになり、ページの追加（複数ページ管理）も解放されます。\n' +
+    'グリッド内のマスは、編集モード中であればドラッグ&ドロップで入れ替えできます。',
   'help-mixer':
     '音量ミキサーの使い方：\n' +
-    '右上の「＋」でミキサーに操作したいアプリを追加します。\n' +
-    '上段はローカル（自分のPCで聞こえる音量）、下段は配信（OBS側の音量）のゲージです。\n' +
-    'ゲージをクリック／ドラッグすると、その場で音量を変更できます。\n' +
-    '同じアプリ（例: Chrome）で複数のウィンドウを開いている場合、配信フェーダーが' +
-    '意図しないウィンドウ（無音のタブ等）を捉えてしまうことがあります。その場合は' +
-    'カードの「対象ウィンドウ」ボタンから、実際に音を鳴らしているウィンドウを選び直してください。',
+    '右上の「＋」でミキサーに操作したいアプリを追加します。追加時に、そのアプリが使うElgato Wave Linkのチャンネルと、ローカル用・配信用それぞれのミックス（Personal Mix／Stream Mix／Chat Mixなど）を選びます（Wave Linkアプリが起動していない場合は選択肢が表示されないので、先にWave Linkを起動しておいてください）。\n' +
+    '上段はローカル（自分のPCで聞こえる音量）、下段は配信（視聴者に届く音量）のゲージです。それぞれ独立して調整でき、ゲージをクリック／ドラッグ、またはマウスホイールで音量を変更できます。\n' +
+    'カードのミュートボタンで個別ミュート、ヘッダー付近の一括ミュートですべてまとめてミュートできます。\n\n' +
+    '無料版ではミキサーに追加できるアプリは2つまでです。買い切り版にすると無制限になります。',
   'help-obs':
     'OBS連携の設定方法：\n' +
     '1. OBS側で「ツール」→「WebSocketサーバー設定」を開き、サーバーを有効化してURL・パスワードを確認する\n' +
     '2. VirtualMixDeckのヘッダーにある「OBS設定」ボタンから同じURL・パスワードを入力して「接続」\n' +
-    '3. 接続に成功するとヘッダーの表示が「OBS: 接続済み」になります。',
+    '3. 接続に成功するとヘッダーの表示が「OBS: 接続済み」になります。\n\n' +
+    '接続後は、ショートカットボタンの種類で「OBS操作」を選ぶと、配信の開始／停止やシーン切り替えをボタンから実行できます。なお、音量の調整は音量ミキサー（Wave Link連携）側の機能で、OBS連携とは別です。',
   'help-preset':
-    'プリセットの使い方：\n' +
+    'プリセットの使い方（買い切り版限定機能）：\n' +
     'プリセットは、全ページ分のショートカット構成をまとめて名前付きで保存・切替できる機能です。\n' +
     '「現在の構成を保存」で今の全ページ構成を新規プリセットとして保存し、\n' +
     'プルダウンで選んで「読み込む」と、その構成に丸ごと置き換わります（未保存の変更は失われるので注意）。\n' +
-    '「管理」から既存プリセットの上書き保存・名前変更・削除ができます。',
+    '「管理」から既存プリセットの上書き保存・名前変更・削除ができます。\n\n' +
+    '無料版では利用できません。メニューバーの「アカウント」→「購入・ライセンス」から買い切り版にすると使えるようになります。',
 };
 
 document.getElementById('win-minimize-btn').addEventListener('click', () => {
@@ -1104,6 +1106,9 @@ document.getElementById('win-close-btn').addEventListener('click', () => {
   window.virtualMixDeck.windowClose();
 });
 
+// 「バージョン」ドロップダウンの「アップデートを確認」等は状態に応じて動的に追加・削除される
+// （下のrenderVersionUpdateArea参照）ため、静的querySelectorAllの対象外。#app-menu-bar側の
+// イベント委譲（下のクリックリスナー）でまとめて拾う。
 document.querySelectorAll('.menu-bar-dropdown-item').forEach((item) => {
   item.addEventListener('click', () => {
     if (!item.classList.contains('disabled')) {
@@ -1118,6 +1123,74 @@ document.querySelectorAll('.menu-bar-dropdown-item').forEach((item) => {
     document.querySelectorAll('.menu-bar-item.open').forEach((i) => i.classList.remove('open'));
   });
 });
+
+// ---- アップデート確認（「バージョン」メニュー） ----
+
+const versionMenuBadgeItemEl = document.querySelector('.menu-bar-item[data-menu="version"]');
+const versionUpdateAreaEl = document.getElementById('version-update-area');
+
+function makeUpdateAreaDisabledItem(label) {
+  const el = document.createElement('div');
+  el.className = 'menu-bar-dropdown-item disabled';
+  el.textContent = label;
+  return el;
+}
+
+function makeUpdateAreaActionItem(label, onClick) {
+  const el = document.createElement('div');
+  el.className = 'menu-bar-dropdown-item';
+  el.textContent = label;
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.menu-bar-item.open').forEach((i) => i.classList.remove('open'));
+    onClick();
+  });
+  return el;
+}
+
+function renderVersionUpdateArea(state) {
+  versionUpdateAreaEl.innerHTML = '';
+  const hasUpdateBadge = state.status === 'available' || state.status === 'downloaded';
+  versionMenuBadgeItemEl.classList.toggle('has-update-badge', hasUpdateBadge);
+
+  switch (state.status) {
+    case 'checking':
+      versionUpdateAreaEl.appendChild(makeUpdateAreaDisabledItem('確認中…'));
+      break;
+    case 'available':
+      versionUpdateAreaEl.appendChild(makeUpdateAreaDisabledItem(`新しいバージョン ${state.version} があります`));
+      versionUpdateAreaEl.appendChild(
+        makeUpdateAreaActionItem('ダウンロードする', () => window.virtualMixDeck.appMenuDownloadUpdate())
+      );
+      break;
+    case 'downloading':
+      versionUpdateAreaEl.appendChild(makeUpdateAreaDisabledItem(`ダウンロード中… ${state.percent}%`));
+      break;
+    case 'downloaded':
+      versionUpdateAreaEl.appendChild(makeUpdateAreaDisabledItem(`バージョン ${state.version} の準備ができました`));
+      versionUpdateAreaEl.appendChild(
+        makeUpdateAreaActionItem('今すぐ更新して再起動(アプリ)', () => window.virtualMixDeck.appMenuInstallUpdate())
+      );
+      break;
+    case 'not-available':
+      versionUpdateAreaEl.appendChild(makeUpdateAreaDisabledItem('最新の状態です'));
+      versionUpdateAreaEl.appendChild(
+        makeUpdateAreaActionItem('アップデートを確認', () => window.virtualMixDeck.appMenuCheckUpdate())
+      );
+      break;
+    case 'error':
+      versionUpdateAreaEl.appendChild(makeUpdateAreaDisabledItem('確認できませんでした'));
+      versionUpdateAreaEl.appendChild(
+        makeUpdateAreaActionItem('アップデートを確認', () => window.virtualMixDeck.appMenuCheckUpdate())
+      );
+      break;
+    default:
+      versionUpdateAreaEl.appendChild(
+        makeUpdateAreaActionItem('アップデートを確認', () => window.virtualMixDeck.appMenuCheckUpdate())
+      );
+  }
+}
+
+window.virtualMixDeck.onUpdaterStateChanged((state) => renderVersionUpdateArea(state));
 
 // ---- 購入・ライセンス ----
 
@@ -1248,6 +1321,7 @@ async function init() {
   await reloadPresets();
   const version = await window.virtualMixDeck.getAppVersion();
   document.getElementById('version-display').textContent = `現在のバージョン: v${version}`;
+  renderVersionUpdateArea(await window.virtualMixDeck.appMenuGetUpdaterState());
   setInterval(refreshMixerVolumes, 3000);
 }
 

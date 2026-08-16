@@ -91,6 +91,36 @@ body {
   color: var(--text-dim);
 }
 
+.menu-bar-dropdown-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border-subtle);
+}
+
+.menu-bar-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 「バージョン」ラベル右上の赤丸バッジ。新しいバージョンが見つかっている間だけ表示する
+   （renderer.jsのrenderVersionUpdateArea参照）。 */
+.menu-badge {
+  position: absolute;
+  top: -3px;
+  right: -8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e5484d;
+  box-shadow: 0 0 0 1px var(--bg-card);
+  display: none;
+}
+
+.menu-bar-item.has-update-badge .menu-badge {
+  display: block;
+}
+
 /* ---- ウィンドウ操作ボタン（frame:false化に伴う自作の最小化/閉じるボタン） ---- */
 .window-controls {
   display: flex;

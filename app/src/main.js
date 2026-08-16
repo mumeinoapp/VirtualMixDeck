@@ -22,9 +22,67 @@ const { pathToFileURL } = require('url');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const Store = require('electron-store');
+const { autoUpdater } = require('electron-updater');
 const helperBridge = require('./helperBridge');
 const obsBridge = require('./obsBridge');
 const waveLinkBridge = require('./waveLinkBridge');
+
+// アップデート確認機能（MultiCastDeckと同じelectron-updater方式。GitHub Releasesの
+// latest.ymlをelectron-builderのpublish設定経由で参照する）。自動ダウンロード・自動適用は
+// せず、必ずユーザーが「バージョン」メニューから明示的に選んだ時だけ進める。
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+
+// 「バージョン」メニューの表示状態。{ status: 'idle'|'checking'|'available'|
+// 'not-available'|'downloading'|'downloaded'|'error', version?, percent? }
+let updaterState = { status: 'idle' };
+
+function notifyUpdaterStateChanged() {
+  mainWindow?.webContents.send('appMenu:updaterStateChanged', updaterState);
+}
+
+/** 「バージョン」メニュー内「アップデートを確認」クリック時の共通処理。 */
+function manualCheckForUpdates() {
+  if (!app.isPackaged) {
+    // electron-updaterはパッケージ化されたアプリでしか正しく動作しない（app-update.ymlが
+    // ビルド時にのみ生成されるため）。npm start（開発モード）では待たせずすぐ伝える。
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'アップデートを確認',
+      message: 'インストール版でのみアップデートを確認できます。',
+    });
+    return;
+  }
+  autoUpdater.checkForUpdates().catch(() => {
+    // エラー内容はautoUpdater.on('error', ...)側で処理する（ダイアログは出さず、
+    // メニューの表示だけを更新する）。
+  });
+}
+
+autoUpdater.on('checking-for-update', () => {
+  updaterState = { status: 'checking' };
+  notifyUpdaterStateChanged();
+});
+autoUpdater.on('update-available', (info) => {
+  updaterState = { status: 'available', version: info.version };
+  notifyUpdaterStateChanged();
+});
+autoUpdater.on('update-not-available', () => {
+  updaterState = { status: 'not-available' };
+  notifyUpdaterStateChanged();
+});
+autoUpdater.on('download-progress', (progress) => {
+  updaterState = { status: 'downloading', percent: Math.round(progress.percent || 0) };
+  notifyUpdaterStateChanged();
+});
+autoUpdater.on('update-downloaded', (info) => {
+  updaterState = { status: 'downloaded', version: info.version };
+  notifyUpdaterStateChanged();
+});
+autoUpdater.on('error', () => {
+  updaterState = { status: 'error' };
+  notifyUpdaterStateChanged();
+});
 
 const GRID_ROWS = 4;
 const GRID_COLS = 5;
@@ -871,6 +929,11 @@ app.whenReady().then(() => {
 
   ipcMain.handle('app:getVersion', () => app.getVersion());
 
+  ipcMain.handle('appMenu:getUpdaterState', () => updaterState);
+  ipcMain.handle('appMenu:checkUpdate', () => manualCheckForUpdates());
+  ipcMain.handle('appMenu:downloadUpdate', () => autoUpdater.downloadUpdate());
+  ipcMain.handle('appMenu:installUpdate', () => autoUpdater.quitAndInstall(false, true));
+
   ipcMain.handle('appMenu:reload', () => mainWindow?.webContents.reload());
   ipcMain.handle('appMenu:toggleDevTools', () => mainWindow?.webContents.toggleDevTools());
   ipcMain.handle('appMenu:quit', () => app.quit());
@@ -887,6 +950,14 @@ app.whenReady().then(() => {
   waveLinkBridge.connect().catch(() => {});
 
   createWindow();
+
+  // 起動時に一度だけ、ダイアログを出さずに静かにアップデート確認する（結果は「バージョン」
+  // メニューを開けば分かる）。起動直後の描画・各種接続処理と競合しないよう5秒待つ。
+  if (app.isPackaged) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch(() => {});
+    }, 5000);
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

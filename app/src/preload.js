@@ -61,6 +61,16 @@ contextBridge.exposeInMainWorld('virtualMixDeck', {
 
   getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
 
+  appMenuGetUpdaterState: () => ipcRenderer.invoke('appMenu:getUpdaterState'),
+  appMenuCheckUpdate: () => ipcRenderer.invoke('appMenu:checkUpdate'),
+  appMenuDownloadUpdate: () => ipcRenderer.invoke('appMenu:downloadUpdate'),
+  appMenuInstallUpdate: () => ipcRenderer.invoke('appMenu:installUpdate'),
+  onUpdaterStateChanged: (callback) => {
+    const listener = (_e, state) => callback(state);
+    ipcRenderer.on('appMenu:updaterStateChanged', listener);
+    return () => ipcRenderer.removeListener('appMenu:updaterStateChanged', listener);
+  },
+
   appMenuReload: () => ipcRenderer.invoke('appMenu:reload'),
   appMenuToggleDevTools: () => ipcRenderer.invoke('appMenu:toggleDevTools'),
   appMenuQuit: () => ipcRenderer.invoke('appMenu:quit'),
